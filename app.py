@@ -9,6 +9,10 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
 
+# Some hosting platforms inject HTTP(S)_PROXY env vars that break Groq's SDK.
+for proxy_var in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+    os.environ.pop(proxy_var, None)
+
 @st.cache_resource(show_spinner=False)
 def load_local_embedding_model():
     model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -46,7 +50,6 @@ llm = ChatGroq(
     groq_api_key=os.getenv("GROQ_API_KEY"),
     model_name="llama-3.3-70b-versatile",
     proxies=None 
-
 )
 
 SYSTEM_RULES = """ You are a helpful assistant. 
