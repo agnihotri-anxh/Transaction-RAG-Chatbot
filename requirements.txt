@@ -7,3 +7,4 @@ langchain-groq==0.1.1
 groq==0.8.0
 scikit-learn==1.5.2
 pandas==2.3.3
+huggingface-hub==0.25.2
