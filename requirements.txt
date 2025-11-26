@@ -1,0 +1,7 @@
+streamlit==1.36.0
+sentence-transformers==2.6.1
+numpy==1.26.4
+python-dotenv==1.0.1
+torch==2.2.2
+langchain-groq==0.1.4
+groq==0.8.0
