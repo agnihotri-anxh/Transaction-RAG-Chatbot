@@ -23,7 +23,7 @@ texts = [
 
 @st.cache_resource
 def load_embedder():
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cuda")
+    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", device="cpu")
 
 model = load_embedder()
 
