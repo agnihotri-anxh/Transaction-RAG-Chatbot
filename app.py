@@ -4,19 +4,26 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
+from huggingface_hub.errors import HfHubHTTPError
 from langchain_groq import ChatGroq
 from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
 
-client = InferenceClient(api_key=os.getenv("HF_TOKEN"))
+HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+client = InferenceClient(
+    api_key=os.getenv("HF_TOKEN"),
+    base_url="https://router.huggingface.co",
+)
+
 
 def get_embeddings(text_list):
-    output = client.feature_extraction(
-        model="sentence-transformers/all-MiniLM-L6-v2",
-        text=text_list
-    )
-    return np.array(output)
+    try:
+        output = client.feature_extraction(model=HF_MODEL, text=text_list)
+        return np.array(output)
+    except HfHubHTTPError as exc:
+        st.error(f"Hugging Face inference error: {exc}")
+        raise
 
 @st.cache_resource
 def load_transactions(file_path="transactions.json"):
