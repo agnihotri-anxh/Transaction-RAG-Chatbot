@@ -70,7 +70,7 @@ Answer:
 
 
 st.set_page_config(page_title="Transaction RAG Chatbot")
-st.title("Transaction RAG Chatbot (Fast Version)")
+st.title("Transaction RAG Chatbot")
 
 if "history" not in st.session_state:
     st.session_state.history = []
