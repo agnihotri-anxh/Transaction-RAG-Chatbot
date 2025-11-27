@@ -40,7 +40,7 @@ Rules:
 
 2. If the user's question is about customers, spending, dates, amounts, products, purchases, etc., use ONLY the retrieved context. 
 
-3. If calculation is required (e.g., "What is Amit’s total spending?"), give a concise final answer. 
+3. If calculation is required (e.g., "What is Amit’s total spending?"), give a little bit info and concise final answer. 
 
 4. Do NOT guess or invent information. 
 
