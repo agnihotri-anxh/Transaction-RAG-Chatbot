@@ -19,7 +19,7 @@ def load_texts():
 
 @st.cache_resource
 def load_embeddings():
-    return np.load("embeddings.npy")
+    return np.load("embeddings.npy", mmap_mode="r")
 
 texts = load_texts()
 embeddings = load_embeddings()
@@ -49,7 +49,7 @@ def retrieve_transactions(query, embeddings, texts, top_k=5):
 
 llm = ChatGroq(
     groq_api_key=os.getenv("GROQ_API_KEY"),
-    model_name="openai/gpt-oss-20b",
+    model_name="llama-3.1-8b-instant",
 )
 
 SYSTEM_RULES = """ You are a helpful assistant. 
