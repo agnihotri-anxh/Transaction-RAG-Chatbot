@@ -4,6 +4,7 @@ import os
 import streamlit as st
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
+from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
@@ -26,13 +27,19 @@ def clean_text(q):
     q = q.replace("'", "").replace("’", "")
     return q
 
-def retrieve_transactions(query, embeddings, texts, top_k=5):
-    from sentence_transformers import SentenceTransformer
+@st.cache_resource(show_spinner=False)
+def load_query_encoder():
+    """Cache the encoder so it doesn't re-download for every question."""
+    return SentenceTransformer("all-MiniLM-L6-v2")
 
+
+query_encoder = load_query_encoder()
+
+
+def retrieve_transactions(query, embeddings, texts, top_k=5):
     query = clean_text(query) 
 
-    embedder = SentenceTransformer("all-MiniLM-L6-v2")
-    query_vec = embedder.encode([query])
+    query_vec = query_encoder.encode([query])
 
     scores = cosine_similarity(embeddings, query_vec).flatten()
     idx = scores.argsort()[-top_k:][::-1]
@@ -78,8 +85,8 @@ def generate_answer(query, chat_history):
     Answer:
     """
 
-    response = llm.predict(prompt)
-    return response.strip()
+    response = llm.invoke(prompt)
+    return response.content.strip()
 
 st.set_page_config(page_title="Transaction RAG Chatbot")
 st.title("Transaction RAG Chatbot")
