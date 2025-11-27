@@ -7,6 +7,8 @@ from langchain_groq import ChatGroq
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
+st.set_page_config(page_title="Transaction RAG Chatbot")
+
 load_dotenv()
 
 
@@ -87,8 +89,6 @@ def generate_answer(query, chat_history):
 
     response = llm.invoke(prompt)
     return response.content.strip()
-
-st.set_page_config(page_title="Transaction RAG Chatbot")
 st.title("Transaction RAG Chatbot")
 
 if "history" not in st.session_state:
