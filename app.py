@@ -19,48 +19,48 @@ def load_texts():
 def load_embeddings():
     return np.load("embeddings.npy", mmap_mode="r")
 
-texts = load_texts()
-embeddings = load_embeddings()
-
-def clean_text(q):
-    q = q.lower()
-    q = q.replace("'", "").replace("’", "")
-    return q
-
 @st.cache_resource(show_spinner=False)
 def load_query_encoder():
     return SentenceTransformer("all-MiniLM-L6-v2")
 
-def retrieve_transactions(query, embeddings, texts, top_k=3):
+@st.cache_resource
+def load_llm():
+    return ChatGroq(
+        groq_api_key=os.getenv("GROQ_API_KEY"),
+        model_name="llama-3.1-8b-instant",
+    )
+
+def clean_text(q):
+    q = q.lower()
+    q = q.replace("'", "").replace("'", "")
+    return q
+
+def retrieve_transactions(query, embeddings, texts, top_k=5):
     from sklearn.metrics.pairwise import cosine_similarity
 
     query = clean_text(query)
-
     encoder = load_query_encoder()   
     query_vec = encoder.encode([query])
-
     scores = cosine_similarity(embeddings, query_vec).flatten()
     idx = scores.argsort()[-top_k:][::-1]
     return [texts[i] for i in idx]
 
-llm = ChatGroq(
-    groq_api_key=os.getenv("GROQ_API_KEY"),
-    model_name="llama-3.1-8b-instant",
-)
-
 SYSTEM_RULES = """You are a helpful assistant.
 Rules:
-1. Greetings → respond normally.
-2. Questions about spending → use ONLY context.
-3. Calculations → concise final answer.
+1. Greetings -> respond normally(like, how can I assist you).
+2. Questions about spending -> use ONLY context.
+3. Calculations -> concise final answer.
 4. Do NOT invent information.
-5. If missing → say: 'I don't have data for that.'"""
+5. If missing -> say: 'I don't have data for that.'"""
 
 def generate_answer(query, chat_history):
+    # Lazy load only when first query arrives
+    texts = load_texts()
+    embeddings = load_embeddings()
+    llm = load_llm()
 
     recent_history = chat_history[-2:]
-
-    context_docs = retrieve_transactions(query, embeddings, texts, top_k=3)
+    context_docs = retrieve_transactions(query, embeddings, texts, top_k=5)
     context = "\n".join(context_docs)
 
     history_text = "\n".join([
@@ -82,8 +82,8 @@ Question: {query}
 Answer:
 """
 
-    response = llm.predict(prompt)
-    return response.strip()
+    response = llm.invoke(prompt)
+    return response.content.strip()
 
 st.title("Transaction RAG Chatbot")
 

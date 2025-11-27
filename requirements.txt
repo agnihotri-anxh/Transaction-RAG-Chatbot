@@ -1,14 +1,6 @@
 streamlit==1.36.0
-langchain==0.2.11
 langchain-groq==0.1.5
-
-sentence-transformers==2.2.2 
-transformers==4.39.3
-huggingface-hub==0.23.2
-
-torch==2.1.2
+sentence-transformers==2.7.0
 numpy==1.26.4
 scikit-learn==1.4.2
-
 python-dotenv==1.0.1
-requests==2.31.0
