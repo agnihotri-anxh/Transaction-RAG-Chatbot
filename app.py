@@ -5,17 +5,15 @@ import streamlit as st
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
 
 st.set_page_config(page_title="Transaction RAG Chatbot")
 
 load_dotenv()
 
-
 @st.cache_resource
 def load_texts():
     texts = json.load(open("texts.json"))
-    return [t.lower() for t in texts]  
+    return [t.lower() for t in texts]
 
 @st.cache_resource
 def load_embeddings():
@@ -31,17 +29,15 @@ def clean_text(q):
 
 @st.cache_resource(show_spinner=False)
 def load_query_encoder():
-    """Cache the encoder so it doesn't re-download for every question."""
     return SentenceTransformer("all-MiniLM-L6-v2")
 
+def retrieve_transactions(query, embeddings, texts, top_k=3):
+    from sklearn.metrics.pairwise import cosine_similarity
 
-query_encoder = load_query_encoder()
+    query = clean_text(query)
 
-
-def retrieve_transactions(query, embeddings, texts, top_k=5):
-    query = clean_text(query) 
-
-    query_vec = query_encoder.encode([query])
+    encoder = load_query_encoder()   
+    query_vec = encoder.encode([query])
 
     scores = cosine_similarity(embeddings, query_vec).flatten()
     idx = scores.argsort()[-top_k:][::-1]
@@ -52,20 +48,19 @@ llm = ChatGroq(
     model_name="llama-3.1-8b-instant",
 )
 
-SYSTEM_RULES = """ You are a helpful assistant. 
-Rules: 
-1. If the user's message is a greeting, small talk, or general conversation (e.g., hi, hello, how can I assist you), respond normally without using transaction context. 
-2. If the user's question is about customers, spending, dates, amounts, products, purchases, etc., use ONLY the retrieved context. 
-3. If calculation is required (e.g., "What is Amit’s total spending?"), give a little bit info and concise final answer. 
-4. Do NOT guess or invent information. 
-5. If the required information is missing, say: "I don't have data for that." """
-
+SYSTEM_RULES = """You are a helpful assistant.
+Rules:
+1. Greetings → respond normally.
+2. Questions about spending → use ONLY context.
+3. Calculations → concise final answer.
+4. Do NOT invent information.
+5. If missing → say: 'I don't have data for that.'"""
 
 def generate_answer(query, chat_history):
 
     recent_history = chat_history[-2:]
 
-    context_docs = retrieve_transactions(query, embeddings, texts, top_k=5)
+    context_docs = retrieve_transactions(query, embeddings, texts, top_k=3)
     context = "\n".join(context_docs)
 
     history_text = "\n".join([
@@ -74,21 +69,22 @@ def generate_answer(query, chat_history):
     ])
 
     prompt = f"""
-    {SYSTEM_RULES}
+{SYSTEM_RULES}
 
-    Chat History:
-    {history_text}
+Chat History:
+{history_text}
 
-    Context:
-    {context}
+Context:
+{context}
 
-    Question: {query}
+Question: {query}
 
-    Answer:
-    """
+Answer:
+"""
 
-    response = llm.invoke(prompt)
-    return response.content.strip()
+    response = llm.predict(prompt)
+    return response.strip()
+
 st.title("Transaction RAG Chatbot")
 
 if "history" not in st.session_state:
