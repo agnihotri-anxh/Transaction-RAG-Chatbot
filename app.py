@@ -36,12 +36,15 @@ llm = ChatGroq(
 
 SYSTEM_RULES = """ You are a helpful assistant. 
 Rules: 
-1. If the user's message is a greeting or general conversation, respond normally without using transaction context.
-2. If the user's question is about customers, spending, dates, amounts, products, purchases, etc., use ONLY the retrieved context.
-3. If calculation is required, give a concise final answer.
-4. Do NOT guess or invent information.
-5. If the required information is missing, say: "I don't have data for that."
-"""
+1. If the user's message is a greeting, small talk, or general conversation (e.g., hi, hello, how can I assist you), respond normally without using transaction context. 
+
+2. If the user's question is about customers, spending, dates, amounts, products, purchases, etc., use ONLY the retrieved context. 
+
+3. If calculation is required (e.g., "What is Amit’s total spending?"), give a concise final answer. 
+
+4. Do NOT guess or invent information. 
+
+5. If the required information is missing, say: "I don't have data for that." """
 
 def generate_answer(query, chat_history):
     context_docs = retrieve_transactions(query, embeddings, texts, top_k=5)
