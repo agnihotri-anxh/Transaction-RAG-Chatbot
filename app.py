@@ -31,7 +31,7 @@ def retrieve_transactions(query, embeddings, texts, top_k=5):
 
 llm = ChatGroq(
     groq_api_key=os.getenv("GROQ_API_KEY"),
-    model_name="llama-3.3-70b-versatile",
+    model_name="llama-3.1-8b-instant",
 )
 
 SYSTEM_RULES = """ You are a helpful assistant. 
@@ -42,7 +42,7 @@ Rules:
 
 3. If calculation is required (e.g., "What is Amit’s total spending?"), give a little bit info and concise final answer. 
 
-4. Do NOT guess or invent information. 
+4. Do NOT guess or invent information.
 
 5. If the required information is missing, say: "I don't have data for that." """
 
