@@ -23,31 +23,52 @@ def init_llm():
         model_name="llama-3.1-8b-instant",
     )
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource
 def load_texts():
-    with open("texts.json", "r") as f:
-        return [t.lower() for t in json.load(f)]
+    """Load texts - cached as resource"""
+    try:
+        with open("texts.json", "r") as f:
+            return [t.lower() for t in json.load(f)]
+    except FileNotFoundError:
+        st.error("Error: 'texts.json' not found.")
+        return []
 
-@st.cache_data(show_spinner=False)
+@st.cache_resource
 def load_embeddings():
-    return np.load("embeddings.npy")  
-
-encoder = init_encoder()
-llm = init_llm()
-texts = load_texts()
-embeddings = load_embeddings()
+    """Load embeddings with memory mapping - CRITICAL for memory efficiency"""
+    try:
+        return np.load("embeddings.npy", mmap_mode="r")
+    except FileNotFoundError:
+        st.error("Error: 'embeddings.npy' not found.")
+        return np.array([])
+    except ValueError:
+        st.error("Error: Could not load embeddings. File might be corrupt.")
+        return np.array([])
 
 def clean_text(q):
     return q.lower().replace("'", "").replace('"', "")
 
-def retrieve_transactions(query, top_k=3):
+def retrieve_transactions(query, embeddings, texts, top_k=5):
+    """Retrieve transactions with memory-efficient similarity calculation"""
+    if embeddings.size == 0 or not texts:
+        return ["No transaction data loaded."]
+    
     query = clean_text(query)
+    encoder = init_encoder()
 
     qvec = encoder.encode([query], convert_to_numpy=True)[0]
     qvec = qvec / (np.linalg.norm(qvec) + 1e-8)
 
     scores = np.dot(embeddings, qvec)
-    idx = scores.argsort()[-top_k:][::-1]
+
+    if len(embeddings) > 10000:
+
+        idx = scores.argsort()[-top_k:][::-1]
+    else:
+
+        norms = np.linalg.norm(embeddings, axis=1)
+        scores = scores / (norms + 1e-8)
+        idx = scores.argsort()[-top_k:][::-1]
 
     return [texts[i] for i in idx]
 
@@ -61,8 +82,13 @@ Rules:
 """
 
 def generate_answer(query, chat_history):
+    """Generate answer with lazy-loaded resources"""
+    # Lazy load resources only when needed (saves memory on startup)
+    texts = load_texts()
+    embeddings = load_embeddings()
+    llm = init_llm()
 
-    context_docs = retrieve_transactions(query, top_k=3)
+    context_docs = retrieve_transactions(query, embeddings, texts, top_k=5)
     context = "\n".join(context_docs)
 
     history_text = "\n".join(
@@ -73,19 +99,18 @@ def generate_answer(query, chat_history):
     prompt = f"""
 {SYSTEM_RULES}
 
-Chat History:
-{history_text}
+        Chat History:
+        {history_text}
 
-Context:
-{context}
+        Context:
+        {context}
 
-Question: {query}
+        Question: {query}
 
-Answer:
-"""
+        Answer:"""
 
-    response = llm.predict(prompt)   
-    return response.strip()
+    response = llm.invoke(prompt)   
+    return response.content.strip()
 
 
 st.title("Transaction RAG Chatbot")
