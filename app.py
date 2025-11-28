@@ -15,9 +15,8 @@ st.set_page_config(
 
 load_dotenv()
 
-@st.cache_resource
 def init_encoder():
-    model_path = "./models/all-MiniLM-L6-v2"
+    model_path = "./models/paraphrase-MiniLM-L3-v2"
     if not os.path.exists(model_path):
         return None
     try:
