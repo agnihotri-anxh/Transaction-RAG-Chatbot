@@ -8,21 +8,22 @@ from langchain_groq import ChatGroq
 import faiss
 from threading import Thread
 
-# ---------------------------------------------------------
-# Streamlit page settings
-# ---------------------------------------------------------
 st.set_page_config(
     page_title="Transaction RAG Chatbot",
     page_icon="💬",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+st.write("Checking files...")
+
+st.write("texts.json exists:", os.path.exists("texts.json"))
+st.write("embeddings_fp16.npy exists:", os.path.exists("embeddings_fp16.npy"))
+st.write("model dir exists:", os.path.exists("./models/paraphrase-MiniLM-L3-v2"))
+st.write("model files:", os.listdir("./models/paraphrase-MiniLM-L3-v2") if os.path.exists("./models/paraphrase-MiniLM-L3-v2") else "MISSING")
+
 
 load_dotenv()
 
-# ---------------------------------------------------------
-# Global variables (loaded once)
-# ---------------------------------------------------------
 _ENCODER = None
 _FAISS_INDEX = None
 _TEXTS = None
@@ -30,16 +31,13 @@ _TEXTS = None
 MODEL_DIR = "./models/paraphrase-MiniLM-L3-v2"
 
 
-# ---------------------------------------------------------
-# Load encoder model (NO downloading on Render)
-# ---------------------------------------------------------
 def get_encoder():
     global _ENCODER
     if _ENCODER is not None:
         return _ENCODER
 
     if not os.path.exists(MODEL_DIR):
-        st.error("❌ Model folder missing. Upload models/paraphrase-MiniLM-L3-v2/")
+        st.error(f"❌ Model folder missing at: {MODEL_DIR}. Current working dir: {os.getcwd()}")
         return None
 
     try:
@@ -51,9 +49,6 @@ def get_encoder():
     return _ENCODER
 
 
-# ---------------------------------------------------------
-# Load FAISS index and texts (once)
-# ---------------------------------------------------------
 def load_faiss_index():
     global _FAISS_INDEX, _TEXTS
     if _FAISS_INDEX is not None:
@@ -77,9 +72,6 @@ def load_faiss_index():
         return None, []
 
 
-# ---------------------------------------------------------
-# Initialize Groq LLM
-# ---------------------------------------------------------
 @st.cache_resource
 def init_llm():
     api_key = os.getenv("GROQ_API_KEY")
@@ -108,16 +100,10 @@ def init_llm():
         return None
 
 
-# ---------------------------------------------------------
-# Clean user query
-# ---------------------------------------------------------
 def clean(q):
     return q.lower().replace("'", "").replace('"', "")
 
 
-# ---------------------------------------------------------
-# Retrieve top K matches using FAISS
-# ---------------------------------------------------------
 def retrieve(query, index, texts, top_k=3):
     enc = get_encoder()
     if enc is None:
@@ -133,9 +119,6 @@ def retrieve(query, index, texts, top_k=3):
     return [texts[i] for i in idx]
 
 
-# ---------------------------------------------------------
-# System rules
-# ---------------------------------------------------------
 SYSTEM_RULES = """
 You are a helpful assistant.
 Rules:
@@ -145,9 +128,6 @@ Rules:
 """
 
 
-# ---------------------------------------------------------
-# Generate final LLM answer
-# ---------------------------------------------------------
 def generate_answer(query):
     index, texts = load_faiss_index()
     if index is None:
@@ -176,10 +156,6 @@ Answer:
     except Exception as e:
         return f"❌ LLM Error: {e}"
 
-
-# ---------------------------------------------------------
-# UI
-# ---------------------------------------------------------
 st.title("Transaction RAG Chatbot ⚡")
 
 if "messages" not in st.session_state:
