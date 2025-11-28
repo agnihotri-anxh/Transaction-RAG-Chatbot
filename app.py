@@ -8,7 +8,9 @@ from langchain_groq import ChatGroq
 import faiss
 from threading import Thread
 
-
+# ---------------------------------------------------------
+# Streamlit page settings
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="Transaction RAG Chatbot",
     page_icon="💬",
@@ -18,45 +20,40 @@ st.set_page_config(
 
 load_dotenv()
 
-
+# ---------------------------------------------------------
+# Global variables (loaded once)
+# ---------------------------------------------------------
 _ENCODER = None
 _FAISS_INDEX = None
 _TEXTS = None
 
-MODEL_NAME = "sentence-transformers/paraphrase-MiniLM-L3-v2"
 MODEL_DIR = "./models/paraphrase-MiniLM-L3-v2"
 
 
-def ensure_model_dir():
-    """Guarantee embeddings model exists locally for offline usage."""
-    if os.path.exists(MODEL_DIR):
-        return True
-
-    os.makedirs(os.path.dirname(MODEL_DIR), exist_ok=True)
-    try:
-        with st.spinner("Downloading embedding model..."):
-            SentenceTransformer(MODEL_NAME).save(MODEL_DIR)
-        return True
-    except Exception as exc:
-        st.error(f" Failed downloading encoder: {exc}")
-        return False
-
+# ---------------------------------------------------------
+# Load encoder model (NO downloading on Render)
+# ---------------------------------------------------------
 def get_encoder():
     global _ENCODER
     if _ENCODER is not None:
         return _ENCODER
 
-    if not ensure_model_dir():
+    if not os.path.exists(MODEL_DIR):
+        st.error("❌ Model folder missing. Upload models/paraphrase-MiniLM-L3-v2/")
         return None
 
     try:
         _ENCODER = SentenceTransformer(MODEL_DIR)
     except Exception as exc:
-        st.error(f" Failed loading encoder: {exc}")
-        _ENCODER = None
+        st.error(f"❌ Encoder load failed: {exc}")
+        return None
 
     return _ENCODER
 
+
+# ---------------------------------------------------------
+# Load FAISS index and texts (once)
+# ---------------------------------------------------------
 def load_faiss_index():
     global _FAISS_INDEX, _TEXTS
     if _FAISS_INDEX is not None:
@@ -76,15 +73,18 @@ def load_faiss_index():
         return _FAISS_INDEX, _TEXTS
 
     except Exception as e:
-        st.error(f" Failed loading FAISS index: {e}")
+        st.error(f"❌ Failed loading FAISS/embeddings: {e}")
         return None, []
 
 
+# ---------------------------------------------------------
+# Initialize Groq LLM
+# ---------------------------------------------------------
 @st.cache_resource
 def init_llm():
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
-        st.error(" GROQ_API_KEY missing.")
+        st.error("❌ GROQ_API_KEY missing.")
         return None
 
     try:
@@ -93,7 +93,7 @@ def init_llm():
             model_name="llama-3.1-8b-instant"
         )
 
-        # Warmup so first request is fast
+        # Warm-up LLM (non-blocking)
         def warm():
             try:
                 llm.invoke("Ready?")
@@ -104,14 +104,20 @@ def init_llm():
         return llm
 
     except Exception as exc:
-        st.error(f" LLM init failed: {exc}")
+        st.error(f"❌ LLM init failed: {exc}")
         return None
 
 
+# ---------------------------------------------------------
+# Clean user query
+# ---------------------------------------------------------
 def clean(q):
     return q.lower().replace("'", "").replace('"', "")
 
 
+# ---------------------------------------------------------
+# Retrieve top K matches using FAISS
+# ---------------------------------------------------------
 def retrieve(query, index, texts, top_k=3):
     enc = get_encoder()
     if enc is None:
@@ -127,22 +133,29 @@ def retrieve(query, index, texts, top_k=3):
     return [texts[i] for i in idx]
 
 
+# ---------------------------------------------------------
+# System rules
+# ---------------------------------------------------------
 SYSTEM_RULES = """
 You are a helpful assistant.
 Rules:
-1. Greetings → normal reply.
-2. Spending questions → use ONLY context.
-3. No fabricated info.
+1. Reply normally for greetings.
+2. Use ONLY context for spending questions.
+3. Do not invent or fabricate any info.
 """
 
+
+# ---------------------------------------------------------
+# Generate final LLM answer
+# ---------------------------------------------------------
 def generate_answer(query):
     index, texts = load_faiss_index()
     if index is None:
-        return " Could not load transaction data."
+        return "❌ Could not load transaction data."
 
     llm = init_llm()
     if llm is None:
-        return " LLM not available."
+        return "❌ LLM not available."
 
     docs = retrieve(query, index, texts)
     context = "\n".join(docs)
@@ -161,9 +174,12 @@ Answer:
         response = llm.invoke(prompt)
         return response.content.strip()
     except Exception as e:
-        return f" LLM Error: {e}"
+        return f"❌ LLM Error: {e}"
 
 
+# ---------------------------------------------------------
+# UI
+# ---------------------------------------------------------
 st.title("Transaction RAG Chatbot ⚡")
 
 if "messages" not in st.session_state:
@@ -173,11 +189,12 @@ query = st.chat_input("Ask about your transactions...")
 
 if query:
     st.session_state.messages.append({"role": "user", "content": query})
+
     with st.spinner("Thinking..."):
         ans = generate_answer(query)
+
     st.session_state.messages.append({"role": "assistant", "content": ans})
 
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
-
