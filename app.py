@@ -3,21 +3,38 @@ import numpy as np
 import os
 import streamlit as st
 from dotenv import load_dotenv
-from sentence_transformers import SentenceTransformer
-from langchain_groq import ChatGroq
 import warnings
 warnings.filterwarnings("ignore", message="Examining the path of torch.classes")
 
-st.set_page_config(page_title="Transaction RAG Chatbot")
+st.set_page_config(
+    page_title="Transaction RAG Chatbot",
+    page_icon="💬",
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
+
+
 load_dotenv()
+
+def get_sentence_transformer():
+    from sentence_transformers import SentenceTransformer
+    return SentenceTransformer
+
+def get_chat_groq():
+    from langchain_groq import ChatGroq
+    return ChatGroq
 
 
 @st.cache_resource(show_spinner=False)
 def init_encoder():
+    """Lazy load SentenceTransformer only when needed"""
+    SentenceTransformer = get_sentence_transformer()
     return SentenceTransformer("all-MiniLM-L6-v2")  
 
 @st.cache_resource(show_spinner=False)
 def init_llm():
+    """Lazy load ChatGroq only when needed"""
+    ChatGroq = get_chat_groq()
     return ChatGroq(
         groq_api_key=os.getenv("GROQ_API_KEY"),
         model_name="llama-3.1-8b-instant",
