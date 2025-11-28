@@ -15,14 +15,26 @@ st.set_page_config(
 
 load_dotenv()
 
-def init_encoder():
+_ENCODER = None
+
+
+def get_encoder():
+    """Load the encoder once per process (no Streamlit cache)."""
+    global _ENCODER
+    if _ENCODER is not None:
+        return _ENCODER
+
     model_path = "./models/paraphrase-MiniLM-L3-v2"
     if not os.path.exists(model_path):
+        st.error("Embedding model folder not found.")
         return None
+
     try:
-        return SentenceTransformer(model_path)
-    except:
-        return None
+        _ENCODER = SentenceTransformer(model_path)
+    except Exception as exc:
+        st.error(f"Failed to load encoder: {exc}")
+        _ENCODER = None
+    return _ENCODER
 
 from threading import Thread
 
@@ -64,7 +76,8 @@ def load_texts():
 @st.cache_resource
 def load_embeddings():
     try:
-        return np.load("embeddings.npy", mmap_mode="r")
+        emb = np.load("embeddings.npy", mmap_mode="r")
+        return np.asarray(emb, dtype=np.float32)
     except:
         return np.array([])
 
@@ -74,11 +87,12 @@ def clean_text(q):
 def retrieve_transactions(query, embeddings, texts, top_k=3):
     if embeddings.size == 0 or not texts:
         return ["No transaction data loaded."]
-    encoder = init_encoder()
+    encoder = get_encoder()
     if encoder is None:
         return ["Embedding model unavailable."]
     query = clean_text(query)
     qvec = encoder.encode([query], convert_to_numpy=True, normalize_embeddings=True)[0]
+    qvec = qvec.astype(np.float32, copy=False)
     scores = embeddings @ qvec
     top_idx = np.argpartition(scores, -top_k)[-top_k:]
     top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]

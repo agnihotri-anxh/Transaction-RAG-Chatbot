@@ -14,7 +14,7 @@ texts = [
 with open("texts.json", "w") as f:
     json.dump(texts, f, indent=4)
 
-model_path = "./models/all-MiniLM-L6-v2"
+model_path = "./models/paraphrase-MiniLM-L3-v2"
 model = SentenceTransformer(model_path)
 
 embeddings = model.encode(
