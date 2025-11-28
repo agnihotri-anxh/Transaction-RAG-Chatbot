@@ -5,3 +5,5 @@ numpy==1.26.4
 python-dotenv==1.0.1
 faiss-cpu==1.7.4
 tqdm==4.66.5
+torch==2.1.0
+safetensors==0.4.2

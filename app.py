@@ -14,13 +14,6 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed"
 )
-st.write("Checking files...")
-
-st.write("texts.json exists:", os.path.exists("texts.json"))
-st.write("embeddings_fp16.npy exists:", os.path.exists("embeddings_fp16.npy"))
-st.write("model dir exists:", os.path.exists("./models/paraphrase-MiniLM-L3-v2"))
-st.write("model files:", os.listdir("./models/paraphrase-MiniLM-L3-v2") if os.path.exists("./models/paraphrase-MiniLM-L3-v2") else "MISSING")
-
 
 load_dotenv()
 
