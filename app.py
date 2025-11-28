@@ -25,17 +25,33 @@ def init_encoder():
     except:
         return None
 
+from threading import Thread
+
+
 @st.cache_resource
 def init_llm():
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
+        st.error("GROQ_API_KEY not set in environment.")
         return None
+
     try:
-        return ChatGroq(
+        llm = ChatGroq(
             groq_api_key=api_key,
-            model_name="llama-3.1-8b-instant"
+            model_name="llama-3.1-8b-instant",
         )
-    except:
+
+        # Warm up Groq asynchronously so first user query isn't blocked
+        def _warm_up():
+            try:
+                llm.invoke("Say 'ready'.")
+            except Exception:
+                pass
+
+        Thread(target=_warm_up, daemon=True).start()
+        return llm
+    except Exception as exc:
+        st.error(f"Failed to initialize LLM: {exc}")
         return None
 
 @st.cache_resource

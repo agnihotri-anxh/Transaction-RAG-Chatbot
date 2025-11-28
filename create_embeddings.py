@@ -23,7 +23,7 @@ embeddings = model.encode(
     normalize_embeddings=True,
     show_progress_bar=True
 ).astype(np.float32)
-embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
+embeddings = np.ascontiguousarray(embeddings, dtype=np.float16)
 
 file_path = os.path.abspath("embeddings.npy")
 
