@@ -56,20 +56,18 @@ def load_embeddings():
 def clean_text(q):
     return q.lower().replace("'", "").replace('"', "")
 
-def retrieve_transactions(query, embeddings, texts, top_k=5):
+def retrieve_transactions(query, embeddings, texts, top_k=3):
     if embeddings.size == 0 or not texts:
         return ["No transaction data loaded."]
     encoder = init_encoder()
     if encoder is None:
         return ["Embedding model unavailable."]
     query = clean_text(query)
-    qvec = encoder.encode([query], convert_to_numpy=True)[0]
-    qvec = qvec / (np.linalg.norm(qvec) + 1e-8)
-    scores = np.dot(embeddings, qvec)
-    norms = np.linalg.norm(embeddings, axis=1)
-    scores = scores / (norms + 1e-8)
-    idx = scores.argsort()[-top_k:][::-1]
-    return [texts[i] for i in idx]
+    qvec = encoder.encode([query], convert_to_numpy=True, normalize_embeddings=True)[0]
+    scores = embeddings @ qvec
+    top_idx = np.argpartition(scores, -top_k)[-top_k:]
+    top_idx = top_idx[np.argsort(scores[top_idx])[::-1]]
+    return [texts[i] for i in top_idx]
 
 SYSTEM_RULES = """
 You are a helpful assistant.

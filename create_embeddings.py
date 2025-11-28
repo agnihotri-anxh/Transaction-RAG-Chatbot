@@ -17,7 +17,12 @@ with open("texts.json", "w") as f:
 model_path = "./models/all-MiniLM-L6-v2"
 model = SentenceTransformer(model_path)
 
-embeddings = model.encode(texts, show_progress_bar=True).astype(np.float32)
+embeddings = model.encode(
+    texts,
+    batch_size=64,
+    normalize_embeddings=True,
+    show_progress_bar=True
+).astype(np.float32)
 embeddings = np.ascontiguousarray(embeddings, dtype=np.float32)
 
 file_path = os.path.abspath("embeddings.npy")
