@@ -1,7 +1,8 @@
 import json
 import numpy as np
-import os
 from sentence_transformers import SentenceTransformer
+from tqdm import tqdm
+import os
 
 with open("transactions.json", "r") as f:
     transactions = json.load(f)
@@ -14,22 +15,33 @@ texts = [
 with open("texts.json", "w") as f:
     json.dump(texts, f, indent=4)
 
-model_path = "./models/paraphrase-MiniLM-L3-v2"
-model = SentenceTransformer(model_path)
+print("✔ Saved texts.json")
 
-embeddings = model.encode(
-    texts,
-    batch_size=64,
-    normalize_embeddings=True,
-    show_progress_bar=True
-).astype(np.float32)
-embeddings = np.ascontiguousarray(embeddings, dtype=np.float16)
+print("Loading model...")
+model = SentenceTransformer("sentence-transformers/paraphrase-MiniLM-L3-v2")
 
-file_path = os.path.abspath("embeddings.npy")
 
-if os.path.exists(file_path):
-    os.remove(file_path)
+print("Encoding embeddings...")
 
-np.save(file_path, embeddings, allow_pickle=False)
+emb_list = []
 
-print("texts.json and embeddings.npy created successfully.")
+for i in tqdm(range(0, len(texts), 64)):
+    batch = texts[i:i+64]
+    emb = model.encode(
+        batch,
+        normalize_embeddings=True,
+        convert_to_numpy=True
+    ).astype(np.float16)
+    emb_list.append(emb)
+
+embeddings = np.vstack(emb_list)
+
+
+save_path = "embeddings_fp16.npy"
+if os.path.exists(save_path):
+    os.remove(save_path)
+
+np.save(save_path, embeddings, allow_pickle=False)
+
+print("✔ embeddings_fp16.npy created successfully")
+
